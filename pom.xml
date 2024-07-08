@@ -24,10 +24,10 @@
     </parent>
 
     <groupId>io.confluent</groupId>
-    <artifactId>kafka-connect-jdbc</artifactId>
+    <artifactId>kafka-connect-jdbc-autovista</artifactId>
     <packaging>jar</packaging>
     <version>10.7.2-SNAPSHOT</version>
-    <name>kafka-connect-jdbc</name>
+    <name>kafka-connect-jdbc-autovista</name>
     <organization>
         <name>Confluent, Inc.</name>
         <url>http://confluent.io</url>
