@@ -151,7 +151,7 @@ public class TimestampTableQuerier extends TimestampIncrementingTableQuerier {
       }
     }
     // Use the extracted timestamp as the record's timestamp
-    TimestampIncrementingOffset timestampOffset = criteria.extractValues(
+    TimestampIncrementingOffsetBase<Long> timestampOffset = criteria.extractValues(
         schemaMapping.schema(),
         record,
         offset,
@@ -215,7 +215,7 @@ public class TimestampTableQuerier extends TimestampIncrementingTableQuerier {
      * @param offset offset with timestamp to use for the record's offset; may be null
      * @return a {@link SourceRecord} whose source offset contains the provided timestamp
      */
-    public SourceRecord record(TimestampIncrementingOffset offset) {
+    public SourceRecord record(TimestampIncrementingOffsetBase<Long> offset) {
       return new SourceRecord(
           partition, offset.toMap(), topic, valueSchema, value
       );

@@ -599,6 +599,11 @@ public interface DatabaseDialect extends ConnectionProvider {
       Object value
   ) throws SQLException;
 
+  void bindField(
+	      PreparedStatement statement,
+	      int index,
+	      Object value
+	  ) throws SQLException;  
 
   /** Method that binds a value with the given schema at the specified variable within a prepared
    * statement. By default, the behavior is the same as the other overloaded method with the extra
@@ -663,5 +668,10 @@ public interface DatabaseDialect extends ConnectionProvider {
      * @throws IOException  if there is an error accessing a streaming value from the result set
      */
     Object convert(ResultSet resultSet) throws SQLException, IOException;
+  }
+  
+  @FunctionalInterface
+  interface ParameterSetter<T>{
+	  public void setParameter( PreparedStatement stmt, int index, T value ) throws SQLException;
   }
 }

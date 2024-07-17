@@ -353,11 +353,11 @@ public class TimestampTableQuerierTest {
     expectLastCall();
   }
 
-  private static TimestampIncrementingOffset offset(Timestamp ts) {
+  private static TimestampIncrementingOffsetBase offset(Timestamp ts) {
     return offset(ts, null);
   }
 
-  private static TimestampIncrementingOffset offset(Timestamp ts, Long inc) {
+  private static TimestampIncrementingOffsetBase offset(Timestamp ts, Long inc) {
     return new TimestampIncrementingOffset(ts, inc);
   }
 }

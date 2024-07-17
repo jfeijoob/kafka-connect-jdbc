@@ -37,7 +37,7 @@ import java.util.Map;
 import io.confluent.connect.jdbc.dialect.DatabaseDialect;
 import io.confluent.connect.jdbc.source.JdbcSourceConnectorConfig.TimestampGranularity;
 import io.confluent.connect.jdbc.source.SchemaMapping.FieldSetter;
-import io.confluent.connect.jdbc.source.TimestampIncrementingCriteria.CriteriaValues;
+import io.confluent.connect.jdbc.source.TimestampIncrementingCriteriaBase.CriteriaValues;
 import io.confluent.connect.jdbc.util.ColumnDefinition;
 import io.confluent.connect.jdbc.util.ColumnId;
 import io.confluent.connect.jdbc.util.DateTimeUtils;
@@ -60,14 +60,14 @@ import io.confluent.connect.jdbc.util.ExpressionBuilder;
  *   so failures may cause duplicates.
  * </p>
  */
-public class TimestampIncrementingTableQuerier extends TableQuerier implements CriteriaValues {
+public class TimestampIncrementingTableQuerier extends TableQuerier implements CriteriaValues<Long> {
   private static final Logger log = LoggerFactory.getLogger(
       TimestampIncrementingTableQuerier.class
   );
 
   protected final List<String> timestampColumnNames;
-  protected TimestampIncrementingOffset committedOffset;
-  protected TimestampIncrementingOffset offset;
+  protected TimestampIncrementingOffsetBase<Long> committedOffset;
+  protected TimestampIncrementingOffsetBase<Long> offset;
   protected TimestampIncrementingCriteria criteria;
   protected final Map<String, String> partition;
   protected final String topic;

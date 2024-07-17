@@ -15,7 +15,8 @@
 
 package io.confluent.connect.jdbc.source;
 
-import java.util.Arrays;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.TimeZone;
 
 import org.apache.kafka.connect.data.Decimal;
@@ -32,39 +33,50 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import io.confluent.connect.jdbc.dialect.DatabaseDialect;
 import io.confluent.connect.jdbc.util.ColumnId;
 import io.confluent.connect.jdbc.util.DateTimeUtils;
 import io.confluent.connect.jdbc.util.ExpressionBuilder;
 
-public class TimestampIncrementingCriteria extends TimestampIncrementingCriteriaBase<Long>{
+public class TimestampIncrementingCriteriaMultiColumn extends TimestampIncrementingCriteriaBase<IncrementingOffset>{	
 
-  public TimestampIncrementingCriteria(
-      ColumnId incrementingColumn,
+  protected DatabaseDialect dialect;
+
+  public TimestampIncrementingCriteriaMultiColumn(
+      List<ColumnId> incrementingColumns,
       List<ColumnId> timestampColumns,
-      TimeZone timeZone
+      TimeZone timeZone,
+      DatabaseDialect dialect
   ) {
-	  super( Arrays.asList(incrementingColumn),
-			  timestampColumns, timeZone);	  
+	  super( incrementingColumns, timestampColumns, timeZone);
+	  this.dialect = dialect;
   }
+  
+  // TODO: use similar technic used in Sink Connector using Bind field in Database Dialect
+  protected int setQueryParametersIncrementing(
+	  PreparedStatement stmt,
+	  Map<String,Object> incOffset,
+	  int parameterIndex) throws SQLException {
 
-  protected ColumnId getColumnId() {
-	  return (incrementingColumns != null || 
-			  incrementingColumns.isEmpty()) ? 
-					  null:incrementingColumns.get(0);
+	  for (Entry<String, Object> e : incOffset.entrySet()) {
+		  dialect.bindField(stmt, parameterIndex, e.getValue());
+	  }
+	  
+	  return parameterIndex;
   }
   
   @Override
   protected void setQueryParametersTimestampIncrementing(
       PreparedStatement stmt,
-      CriteriaValues<Long> values
+      CriteriaValues<IncrementingOffset> values
   ) throws SQLException {
     Timestamp beginTime = values.beginTimestampValue();
     Timestamp endTime = values.endTimestampValue();
-    Long incOffset = values.lastIncrementedValue();
+    IncrementingOffset incOffset = values.lastIncrementedValue();
     stmt.setTimestamp(1, endTime, DateTimeUtils.getTimeZoneCalendar(timeZone));
     stmt.setTimestamp(2, beginTime, DateTimeUtils.getTimeZoneCalendar(timeZone));
-    stmt.setLong(3, incOffset);
-    stmt.setTimestamp(4, beginTime, DateTimeUtils.getTimeZoneCalendar(timeZone));
+    int nextParameterIndex = setQueryParametersIncrementing( stmt, incOffset.asMap(), 3 );
+    stmt.setTimestamp(nextParameterIndex, beginTime, DateTimeUtils.getTimeZoneCalendar(timeZone));
     log.debug(
         "Executing prepared statement with start time value = {} end time = {} and incrementing"
         + " value = {}", DateTimeUtils.formatTimestamp(beginTime, timeZone),
@@ -75,17 +87,17 @@ public class TimestampIncrementingCriteria extends TimestampIncrementingCriteria
   @Override
   protected void setQueryParametersIncrementing(
       PreparedStatement stmt,
-      CriteriaValues<Long> values
+      CriteriaValues<IncrementingOffset> values
   ) throws SQLException {
-    Long incOffset = values.lastIncrementedValue();
-    stmt.setLong(1, incOffset);
+	  IncrementingOffset incOffset = values.lastIncrementedValue();
+    setQueryParametersIncrementing( stmt, incOffset.asMap(), 1 );
     log.debug("Executing prepared statement with incrementing value = {}", incOffset);
   }
 
   @Override
   protected void setQueryParametersTimestamp(
       PreparedStatement stmt,
-      CriteriaValues<Long> values
+      CriteriaValues<IncrementingOffset> values
   ) throws SQLException {
     Timestamp beginTime = values.beginTimestampValue();
     Timestamp endTime = values.endTimestampValue();
@@ -107,10 +119,10 @@ public class TimestampIncrementingCriteria extends TimestampIncrementingCriteria
    * @return the timestamp for this row; may not be null
    */
   @Override
-  public TimestampIncrementingOffsetBase<Long> extractValues(
+  public TimestampIncrementingOffsetBase<IncrementingOffset> extractValues(
       Schema schema,
       Struct record,
-      TimestampIncrementingOffsetBase<Long> previousOffset,
+      TimestampIncrementingOffsetBase<IncrementingOffset> previousOffset,
       JdbcSourceConnectorConfig.TimestampGranularity timestampGranularity
   ) {
     Timestamp extractedTimestamp = null;
@@ -121,17 +133,19 @@ public class TimestampIncrementingCriteria extends TimestampIncrementingCriteria
           extractedTimestamp) <= 0
       );
     }
-    Long extractedId = null;
+    IncrementingOffset extractedId = null;
     if (hasIncrementedColumn()) {
       extractedId = extractOffsetIncrementedId(schema, record);
 
       // If we are only using an incrementing column, then this must be incrementing.
       // If we are also using a timestamp, then we may see updates to older rows.
-      assert previousOffset == null || previousOffset.getIncrementingOffset() == -1L
-             || extractedId > previousOffset.getIncrementingOffset() || hasTimestampColumns();
+      assert previousOffset == null || previousOffset.getIncrementingOffset() == IncrementingOffset.EMPTY_OFFSET
+             || extractedId.compareTo( previousOffset.getIncrementingOffset() ) == 1 
+             || hasTimestampColumns();
     }
-    return new TimestampIncrementingOffset(extractedTimestamp, extractedId);
+    return new TimestampIncrementingOffsetMultiColumn(extractedTimestamp, extractedId);
   }
+  
 
   /**
    * Extract the incrementing column value from the row.
@@ -140,34 +154,36 @@ public class TimestampIncrementingCriteria extends TimestampIncrementingCriteria
    * @param record the record's struct; never null
    * @return the incrementing ID for this row; may not be null
    */
+  @SuppressWarnings("unchecked")
   @Override
-  protected Long extractOffsetIncrementedId(
+  protected IncrementingOffset extractOffsetIncrementedId(
       Schema schema,
       Struct record
   ) {
-    final Long extractedId;
-    final ColumnId incrementingColumn = getColumnId();
-    final Field field = schema.field(incrementingColumn.name());
-    if (field == null) {
-      throw new DataException("Incrementing column " + incrementingColumn.name() + " not found in "
-              + schema.fields().stream().map(Field::name).collect(Collectors.joining(",")));
-    }
-
-    final Schema incrementingColumnSchema = field.schema();
-    final Object incrementingColumnValue = record.get(incrementingColumn.name());
-    if (incrementingColumnValue == null) {
-      throw new ConnectException(
-          "Null value for incrementing column of type: " + incrementingColumnSchema.type());
-    } else if (isIntegralPrimitiveType(incrementingColumnValue)) {
-      extractedId = ((Number) incrementingColumnValue).longValue();
-    } else if (incrementingColumnSchema.name() != null && incrementingColumnSchema.name().equals(
-        Decimal.LOGICAL_NAME)) {
-      extractedId = extractDecimalId(incrementingColumnValue);
-    } else {
-      throw new ConnectException(
-          "Invalid type for incrementing column: " + incrementingColumnSchema.type());
-    }
-    log.trace("Extracted incrementing column value: {}", extractedId);
+    final IncrementingOffset extractedId = new IncrementingOffset();
+    
+    for (ColumnId incrementingColumn : incrementingColumns) {
+        final Field field = schema.field(incrementingColumn.name());
+        if (field == null) {
+          throw new DataException("Incrementing column " + incrementingColumn.name() + " not found in "
+                  + schema.fields().stream().map(Field::name).collect(Collectors.joining(",")));
+        }
+        final Schema incrementingColumnSchema = field.schema();
+        Object incrementingColumnValue = record.get(incrementingColumn.name());
+        if (incrementingColumnValue == null) {
+          throw new ConnectException(
+              "Null value for incrementing column of type: " + incrementingColumnSchema.type());
+        } else if (incrementingColumnSchema.name() != null && incrementingColumnSchema.name().equals(
+            Decimal.LOGICAL_NAME)) {
+        	incrementingColumnValue = extractDecimalId(incrementingColumnValue);
+        }
+        
+        extractedId.put(incrementingColumn.name(), (Comparable<Object>)incrementingColumnValue);
+        
+        log.trace("Extracted column name: {} value: {}", incrementingColumn.name(),incrementingColumnValue);        
+	}
+    
+    log.trace("Extracted id value: {}", extractedId);
     return extractedId;
   }
   
@@ -203,44 +219,34 @@ public class TimestampIncrementingCriteria extends TimestampIncrementingCriteria
     //  timestamp 1236, id 23
     // We should capture both id = 22 (an update) and id = 23 (a new row)
 	  
-	ColumnId incrementingColumn = getColumnId();
     builder.append(" WHERE ");
-    coalesceTimestampColumns(builder);
-    builder.append(" < ? AND ((");
-    coalesceTimestampColumns(builder);
-    builder.append(" = ? AND ");
-    builder.append(incrementingColumn);
-    builder.append(" > ?");
-    builder.append(") OR ");
-    coalesceTimestampColumns(builder);
-    builder.append(" > ?)");
-    builder.append(" ORDER BY ");
-    coalesceTimestampColumns(builder);
-    builder.append(",");
-    builder.append(incrementingColumn);
-    builder.append(" ASC");
+    
   }
 
   @Override
   protected void incrementingWhereClause(ExpressionBuilder builder) {
-	ColumnId incrementingColumn = getColumnId();
     builder.append(" WHERE ");
-    builder.append(incrementingColumn);
-    builder.append(" > ?");
-    builder.append(" ORDER BY ");
-    builder.append(incrementingColumn);
-    builder.append(" ASC");
   }
   
   @Override
   protected void timestampWhereClause(ExpressionBuilder builder) {
-	    builder.append(" WHERE ");
-	    coalesceTimestampColumns(builder);
-	    builder.append(" > ? AND ");
-	    coalesceTimestampColumns(builder);
-	    builder.append(" < ? ORDER BY ");
-	    coalesceTimestampColumns(builder);
-	    builder.append(" ASC");
-	  }
-
+	builder.append(" WHERE ");
+  }
+  
+  protected void whereForTimeStampFields( ExpressionBuilder builder ) {
+    if (timestampColumns.size() == 1) {
+        builder.append(timestampColumns.get(0));
+        builder.append( " < ?" );
+        return;
+     }
+    
+    boolean first = true;
+    for (ColumnId columnId : timestampColumns) {
+        if(!first)
+        	builder.append( " OR " );
+        builder.append(columnId);
+        builder.append( " < ?" );
+        first = false;
+	}
+  }
 }

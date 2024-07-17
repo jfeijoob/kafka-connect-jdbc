@@ -158,6 +158,8 @@ public class GenericDatabaseDialect implements DatabaseDialect {
   private final TimeZone timeZone;
   private final TimeZone dateTimeZone;
   private final JdbcSourceConnectorConfig.TimestampGranularity tsGranularity;
+  private Map<Class<?>,ParameterSetter<?>> paremeterSetters;
+
 
   /**
    * Create a new dialect instance with the given connector configuration.
@@ -225,8 +227,84 @@ public class GenericDatabaseDialect implements DatabaseDialect {
     } else {
       tsGranularity = TimestampGranularity.CONNECT_LOGICAL;
     }
+    
+    initializeParameterSetters();
   }
 
+  protected void initializeParameterSetters() {
+
+	  paremeterSetters = Map.ofEntries(
+			  Map.entry( Byte.class,
+					  new ParameterSetter<Byte>() {
+				  		public void setParameter( PreparedStatement stmt, int index, Byte value)  throws SQLException{
+				  			stmt.setByte(index, value);
+				  		}
+					  }),
+			  Map.entry( Short.class,
+					  new ParameterSetter<Short>() {
+				  		public void setParameter( PreparedStatement stmt, int index, Short value)  throws SQLException{
+				  			stmt.setShort(index, value);
+				  		}
+					  }),
+			  Map.entry( Integer.class,
+					  new ParameterSetter<Integer>() {
+				  		public void setParameter( PreparedStatement stmt, int index, Integer value)  throws SQLException{
+				  			stmt.setInt(index, value);
+				  		}
+					  }),
+			  Map.entry( Long.class,
+					  new ParameterSetter<Long>() {
+				  		public void setParameter( PreparedStatement stmt, int index, Long value)  throws SQLException{
+				  			stmt.setLong(index, value);
+				  		}
+					  }),
+			  Map.entry( Float.class,
+					  new ParameterSetter<Float>() {
+				  		public void setParameter( PreparedStatement stmt, int index, Float value)  throws SQLException{
+				  			stmt.setFloat(index, value);
+				  		}
+					  }),
+			  Map.entry( Double.class,
+					  new ParameterSetter<Double>() {
+				  		public void setParameter( PreparedStatement stmt, int index, Double value)  throws SQLException{
+				  			stmt.setDouble(index, value);
+				  		}
+					  }),
+			  Map.entry( Boolean.class,
+					  new ParameterSetter<Boolean>() {
+				  		public void setParameter( PreparedStatement stmt, int index, Boolean value)  throws SQLException{
+				  			stmt.setBoolean(index, value);
+				  		}
+					  }),
+			  Map.entry( String.class,
+					  new ParameterSetter<String>() {
+				  		public void setParameter( PreparedStatement stmt, int index, String value)  throws SQLException{
+				  			stmt.setString(index, value);
+				  		}
+					  }),
+			  Map.entry( java.sql.Date.class,
+					  new ParameterSetter<java.sql.Date>() {
+				  		public void setParameter( PreparedStatement stmt, int index, java.sql.Date value)  throws SQLException{
+				  			stmt.setDate(index, value, DateTimeUtils.getTimeZoneCalendar(dateTimeZone));
+				  		}
+					  }),
+			  Map.entry( java.sql.Time.class,
+					  new ParameterSetter<java.sql.Time>() {
+				  		public void setParameter( PreparedStatement stmt, int index, java.sql.Time value)  throws SQLException{
+				  			stmt.setTime(index, value, DateTimeUtils.getTimeZoneCalendar(timeZone));
+				  		}
+					  }),
+			  Map.entry( java.sql.Timestamp.class,
+					  new ParameterSetter<java.sql.Timestamp>() {
+				  		public void setParameter( PreparedStatement stmt, int index, java.sql.Timestamp value)  throws SQLException{
+				  			tsGranularity.toTimestamp.apply(value, timeZone);
+				  			stmt.setTimestamp(index, value, DateTimeUtils.getTimeZoneCalendar(timeZone));
+				  		}
+					  })
+		);	  
+  }
+  
+  
   @Override
   public String name() {
     return getClass().getSimpleName().replace("DatabaseDialect", "");
@@ -1263,6 +1341,10 @@ public class GenericDatabaseDialect implements DatabaseDialect {
     );
   }
 
+  protected ParameterSetter<?> getParameterSetter( Class<?> forClass ){
+	  return paremeterSetters.get(forClass);
+  }
+  
   @SuppressWarnings({"deprecation", "fallthrough"})
   protected ColumnConverter columnConverterFor(
       final ColumnMapping mapping,
@@ -1662,6 +1744,18 @@ public class GenericDatabaseDialect implements DatabaseDialect {
       if (!bound) {
         throw new ConnectException("Unsupported source data type: " + schema.type());
       }
+    }
+  }
+
+  @Override
+  public void bindField(
+      PreparedStatement statement,
+      int index,
+      Object value
+  ) throws SQLException {
+    if (value == null) {
+      statement.setObject(index, null);
+      return;
     }
   }
 

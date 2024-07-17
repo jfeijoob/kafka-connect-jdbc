@@ -383,6 +383,7 @@ public class JdbcSourceTask extends SourceTask {
       return partitionOffset;
     } else {
       Map<String, Object> initialPartitionOffset = null;
+      // TODO: JOSU Compute InitialOffset Using Multi fields. Also configuration for multifields.
       // no offsets found
       Long timestampInitial = config.getLong(JdbcSourceConnectorConfig.TIMESTAMP_INITIAL_CONFIG);
       if (timestampInitial != null) {
@@ -398,7 +399,7 @@ public class JdbcSourceTask extends SourceTask {
           }
         }
         initialPartitionOffset = new HashMap<String, Object>();
-        initialPartitionOffset.put(TimestampIncrementingOffset.TIMESTAMP_FIELD, timestampInitial);
+        initialPartitionOffset.put(TimestampIncrementingOffsetBase.TIMESTAMP_FIELD, timestampInitial);
         log.info("No offsets found for '{}', so using configured timestamp {}", tableOrQuery,
                 timestampInitial);
       }

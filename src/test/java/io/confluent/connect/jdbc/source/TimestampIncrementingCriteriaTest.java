@@ -94,10 +94,10 @@ public class TimestampIncrementingCriteriaTest {
     } else {
       criteria = this.criteria;
     }
-    TimestampIncrementingOffset offset = criteria.extractValues(schema, record,
+    TimestampIncrementingOffset offset = (TimestampIncrementingOffset) criteria.extractValues(schema, record,
         null, timestampGranularity);
     assertEquals(expectedT, offset.getTimestampOffset());
-    assertEquals(expected, offset.getIncrementingOffset());
+    assertEquals(expected, (long)offset.getIncrementingOffset());
   }
 
   @Test
@@ -300,7 +300,7 @@ public class TimestampIncrementingCriteriaTest {
     record = new Struct(schema)
         .put(TS1_COLUMN.name().toUpperCase(), TS1)
         .put(TS2_COLUMN.name(), TS2);
-    TimestampIncrementingOffset offset = criteriaTs.extractValues(schema, record, null, TimestampGranularity.CONNECT_LOGICAL);
+    TimestampIncrementingOffset offset = (TimestampIncrementingOffset) criteriaTs.extractValues(schema, record, null, TimestampGranularity.CONNECT_LOGICAL);
     assertEquals(TS1, offset.getTimestampOffset());
   }
 
@@ -366,7 +366,7 @@ public class TimestampIncrementingCriteriaTest {
     record = new Struct(schema)
         .put(lowerCaseColumnName, TS1)
         .put(upperCaseColumnName, TS2);
-    TimestampIncrementingOffset offset = criteriaTs.extractValues(schema, record, null, TimestampGranularity.CONNECT_LOGICAL);
+    TimestampIncrementingOffset offset = (TimestampIncrementingOffset) criteriaTs.extractValues(schema, record, null, TimestampGranularity.CONNECT_LOGICAL);
     assertEquals(TS1, offset.getTimestampOffset());
   }
 
