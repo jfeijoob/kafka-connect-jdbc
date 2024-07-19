@@ -43,12 +43,12 @@ public class TimestampIncrementingCriteria extends TimestampIncrementingCriteria
       List<ColumnId> timestampColumns,
       TimeZone timeZone
   ) {
-	  super( Arrays.asList(incrementingColumn),
+	  super( incrementingColumn == null?null:Arrays.asList(incrementingColumn),
 			  timestampColumns, timeZone);	  
   }
 
   protected ColumnId getColumnId() {
-	  return (incrementingColumns != null || 
+	  return (incrementingColumns == null || 
 			  incrementingColumns.isEmpty()) ? 
 					  null:incrementingColumns.get(0);
   }

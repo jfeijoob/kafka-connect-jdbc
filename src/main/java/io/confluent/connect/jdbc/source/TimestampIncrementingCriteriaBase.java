@@ -97,7 +97,7 @@ public abstract class TimestampIncrementingCriteriaBase<T> {
   }
 
   protected boolean hasIncrementedColumn() {
-    return incrementingColumns != null ;
+    return incrementingColumns != null && !incrementingColumns.isEmpty() ;
   }
 
   /**
