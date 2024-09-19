@@ -16,9 +16,10 @@
 package io.confluent.connect.jdbc.source;
 
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.Map;
 
-public class TimestampIncrementingOffset extends TimestampIncrementingOffsetBase<Long> {
+public class TimestampIncrementingOffset extends TimestampIncrementingOffsetBase<Timestamp,Long> {
   /**
    * @param timestampOffset the timestamp offset.
    *                        If null, {@link #getTimestampOffset()} will return
@@ -35,6 +36,25 @@ public class TimestampIncrementingOffset extends TimestampIncrementingOffsetBase
     return incrementingOffset == null ? -1 : incrementingOffset;
   }
  
+  @Override
+  public Timestamp getTimestampOffset() {
+    return timestampOffset != null ? timestampOffset : new Timestamp(0L);
+  }
+
+  @Override
+  public Map<String, Object> toMap() {
+    Map<String, Object> map = new HashMap<>(3);
+    if (incrementingOffset != null) {
+      map.put(INCREMENTING_FIELD, incrementingOffset);
+    }
+    if (timestampOffset != null) {
+      map.put(TIMESTAMP_FIELD, timestampOffset.getTime());
+      map.put(TIMESTAMP_NANOS_FIELD, (long) timestampOffset.getNanos());
+    }
+    return map;
+  }
+
+  
   public static TimestampIncrementingOffset fromMap(Map<String, ?> map) {
     if (map == null || map.isEmpty()) {
     	return new TimestampIncrementingOffset(null, null);

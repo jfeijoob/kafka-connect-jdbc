@@ -83,13 +83,10 @@ public class TimestampIncrementingCriteriaMultiColumnTest {
   @Test
   public void createIncrementingWhereClause() {
       StringBuffer expectedResult = new StringBuffer();
-      expectedResult.append(" WHERE ");
-      expectedResult.append(System.lineSeparator());
-      expectedResult.append("    ( \"myTable\".\"id1\" = ? AND \"myTable\".\"id2\" = ? AND \"myTable\".\"id3\" > ? ) OR ");
-      expectedResult.append(System.lineSeparator());
-      expectedResult.append("    ( \"myTable\".\"id1\" = ? AND \"myTable\".\"id2\" > ? ) OR ");
-      expectedResult.append(System.lineSeparator());
-      expectedResult.append("    ( \"myTable\".\"id1\" > ? )");
+      expectedResult.append(" WHERE ( \"myTable\".\"id1\" = ? AND \"myTable\".\"id2\" = ? AND \"myTable\".\"id3\" > ? ) OR ");
+      expectedResult.append("( \"myTable\".\"id1\" = ? AND \"myTable\".\"id2\" > ? ) OR ");
+      expectedResult.append("( \"myTable\".\"id1\" > ? )");
+      expectedResult.append(" ORDER BY \"myTable\".\"id1\",\"myTable\".\"id2\",\"myTable\".\"id3\" ASC");
 
       builder = builder();
       criteriaInc.incrementingWhereClause(builder);
@@ -99,10 +96,15 @@ public class TimestampIncrementingCriteriaMultiColumnTest {
 
   @Test
   public void createTimestampWhereClause() {
-      StringBuffer expectedResult = new StringBuffer();
+      StringBuffer expectedResult = new StringBuffer();      
       expectedResult.append(" WHERE ");
-      expectedResult.append(System.lineSeparator());
-      expectedResult.append("    \"myTable\".\"ts1\" > ? OR \"myTable\".\"ts2\" > ?");
+      expectedResult.append("COALESCE(\"myTable\".\"ts1\",\"myTable\".\"ts2\") > ? ");
+      expectedResult.append("AND ");
+      expectedResult.append("COALESCE(\"myTable\".\"ts1\",\"myTable\".\"ts2\") < ? ");
+      expectedResult.append("ORDER BY ");
+      expectedResult.append("COALESCE(\"myTable\".\"ts1\",\"myTable\".\"ts2\") ");
+      expectedResult.append("ASC");
+
       
       builder = builder();
       criteriaTs.timestampWhereClause(builder);
@@ -112,25 +114,13 @@ public class TimestampIncrementingCriteriaMultiColumnTest {
   @Test
   public void createTimestampIncrementingWhereClause() {
       StringBuffer expectedResult = new StringBuffer();
-      expectedResult.append(" WHERE ");
-      expectedResult.append(System.lineSeparator());
-      expectedResult.append("(");
-      expectedResult.append(System.lineSeparator());
-      expectedResult.append("    \"myTable\".\"ts1\" > ? OR \"myTable\".\"ts2\" > ?");
-      expectedResult.append(System.lineSeparator());
-      expectedResult.append(")");
-      expectedResult.append(System.lineSeparator());
-      expectedResult.append(" AND ");
-      expectedResult.append(System.lineSeparator());
-      expectedResult.append("(");
-      expectedResult.append(System.lineSeparator());
-      expectedResult.append("    ( \"myTable\".\"id1\" = ? AND \"myTable\".\"id2\" = ? AND \"myTable\".\"id3\" > ? ) OR ");
-      expectedResult.append(System.lineSeparator());
-      expectedResult.append("    ( \"myTable\".\"id1\" = ? AND \"myTable\".\"id2\" > ? ) OR ");
-      expectedResult.append(System.lineSeparator());
-      expectedResult.append("    ( \"myTable\".\"id1\" > ? )");
-      expectedResult.append(System.lineSeparator());
-      expectedResult.append(")");
+      expectedResult.append(" WHERE COALESCE(\"myTable\".\"ts1\",\"myTable\".\"ts2\") < ? AND ((");
+      expectedResult.append("COALESCE(\"myTable\".\"ts1\",\"myTable\".\"ts2\") = ? AND (");
+      expectedResult.append("( \"myTable\".\"id1\" = ? AND \"myTable\".\"id2\" = ? AND \"myTable\".\"id3\" > ? ) OR ");
+      expectedResult.append("( \"myTable\".\"id1\" = ? AND \"myTable\".\"id2\" > ? ) OR ");
+      expectedResult.append("( \"myTable\".\"id1\" > ? ))) OR ");
+      expectedResult.append("COALESCE(\"myTable\".\"ts1\",\"myTable\".\"ts2\") > ?)");
+      expectedResult.append(" ORDER BY COALESCE(\"myTable\".\"ts1\",\"myTable\".\"ts2\"),\"myTable\".\"id1\",\"myTable\".\"id2\",\"myTable\".\"id3\" ASC");
 
       builder = builder();
       criteriaIncTs.timestampIncrementingWhereClause(builder);

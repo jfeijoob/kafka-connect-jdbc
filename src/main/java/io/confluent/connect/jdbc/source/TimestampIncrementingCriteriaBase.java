@@ -38,12 +38,12 @@ import java.util.stream.Collectors;
 import io.confluent.connect.jdbc.util.ColumnId;
 import io.confluent.connect.jdbc.util.ExpressionBuilder;
 
-public abstract class TimestampIncrementingCriteriaBase<T> {
+public abstract class TimestampIncrementingCriteriaBase<T,O> {
 
   /**
    * The values that can be used in a statement's WHERE clause.
    */
-  public interface CriteriaValues<T> {
+  public interface CriteriaValues<T,O> {
 
     /**
      * Get the beginning of the time period.
@@ -51,7 +51,7 @@ public abstract class TimestampIncrementingCriteriaBase<T> {
      * @return the beginning timestamp; may be null
      * @throws SQLException if there is a problem accessing the value
      */
-    Timestamp beginTimestampValue() throws SQLException;
+    T beginTimestampValue() throws SQLException;
 
     /**
      * Get the end of the time period.
@@ -59,7 +59,7 @@ public abstract class TimestampIncrementingCriteriaBase<T> {
      * @return the ending timestamp; never null
      * @throws SQLException if there is a problem accessing the value
      */
-    Timestamp endTimestampValue() throws SQLException;
+    T endTimestampValue() throws SQLException;
 
     /**
      * Get the last incremented value seen.
@@ -67,7 +67,7 @@ public abstract class TimestampIncrementingCriteriaBase<T> {
      * @return the last incremented value from one of the rows
      * @throws SQLException if there is a problem accessing the value
      */
-    T lastIncrementedValue() throws SQLException;
+    O lastIncrementedValue() throws SQLException;
   }
 
   protected static final BigDecimal LONG_MAX_VALUE_AS_BIGDEC = new BigDecimal(Long.MAX_VALUE);
@@ -125,7 +125,7 @@ public abstract class TimestampIncrementingCriteriaBase<T> {
    */
   public void setQueryParameters(
       PreparedStatement stmt,
-      CriteriaValues<T> values
+      CriteriaValues<T,O> values
   ) throws SQLException {
     if (hasTimestampColumns() && hasIncrementedColumn()) {
       setQueryParametersTimestampIncrementing(stmt, values);
@@ -138,17 +138,17 @@ public abstract class TimestampIncrementingCriteriaBase<T> {
 
   protected abstract void setQueryParametersTimestampIncrementing(
       PreparedStatement stmt,
-      CriteriaValues<T> values
+      CriteriaValues<T,O> values
   ) throws SQLException;
   
   protected abstract void setQueryParametersIncrementing(
       PreparedStatement stmt,
-      CriteriaValues<T> values
+      CriteriaValues<T,O> values
   ) throws SQLException;
   
   protected abstract void setQueryParametersTimestamp(
       PreparedStatement stmt,
-      CriteriaValues<T> values
+      CriteriaValues<T,O> values
   ) throws SQLException;
 
   /**
@@ -160,10 +160,10 @@ public abstract class TimestampIncrementingCriteriaBase<T> {
    * @param timestampGranularity defines the configured granularity of the timestamp field
    * @return the timestamp for this row; may not be null
    */
-  public abstract TimestampIncrementingOffsetBase<T> extractValues(
+  public abstract TimestampIncrementingOffsetBase<T,O> extractValues(
       Schema schema,
       Struct record,
-      TimestampIncrementingOffsetBase<T> previousOffset,
+      TimestampIncrementingOffsetBase<T,O> previousOffset,
       JdbcSourceConnectorConfig.TimestampGranularity timestampGranularity
   );
   /**
@@ -196,7 +196,7 @@ public abstract class TimestampIncrementingCriteriaBase<T> {
    * @param record the record's struct; never null
    * @return the incrementing ID for this row; may not be null
    */
-  protected abstract T extractOffsetIncrementedId(
+  protected abstract O extractOffsetIncrementedId(
       Schema schema,
       Struct record
   );

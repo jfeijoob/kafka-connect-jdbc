@@ -36,7 +36,7 @@ import io.confluent.connect.jdbc.util.ColumnId;
 import io.confluent.connect.jdbc.util.DateTimeUtils;
 import io.confluent.connect.jdbc.util.ExpressionBuilder;
 
-public class TimestampIncrementingCriteria extends TimestampIncrementingCriteriaBase<Long>{
+public class TimestampIncrementingCriteria extends TimestampIncrementingCriteriaBase<Timestamp,Long>{
 
   public TimestampIncrementingCriteria(
       ColumnId incrementingColumn,
@@ -56,7 +56,7 @@ public class TimestampIncrementingCriteria extends TimestampIncrementingCriteria
   @Override
   protected void setQueryParametersTimestampIncrementing(
       PreparedStatement stmt,
-      CriteriaValues<Long> values
+      CriteriaValues<Timestamp,Long> values
   ) throws SQLException {
     Timestamp beginTime = values.beginTimestampValue();
     Timestamp endTime = values.endTimestampValue();
@@ -75,7 +75,7 @@ public class TimestampIncrementingCriteria extends TimestampIncrementingCriteria
   @Override
   protected void setQueryParametersIncrementing(
       PreparedStatement stmt,
-      CriteriaValues<Long> values
+      CriteriaValues<Timestamp,Long> values
   ) throws SQLException {
     Long incOffset = values.lastIncrementedValue();
     stmt.setLong(1, incOffset);
@@ -85,7 +85,7 @@ public class TimestampIncrementingCriteria extends TimestampIncrementingCriteria
   @Override
   protected void setQueryParametersTimestamp(
       PreparedStatement stmt,
-      CriteriaValues<Long> values
+      CriteriaValues<Timestamp,Long> values
   ) throws SQLException {
     Timestamp beginTime = values.beginTimestampValue();
     Timestamp endTime = values.endTimestampValue();
@@ -107,10 +107,10 @@ public class TimestampIncrementingCriteria extends TimestampIncrementingCriteria
    * @return the timestamp for this row; may not be null
    */
   @Override
-  public TimestampIncrementingOffsetBase<Long> extractValues(
+  public TimestampIncrementingOffsetBase<Timestamp,Long> extractValues(
       Schema schema,
       Struct record,
-      TimestampIncrementingOffsetBase<Long> previousOffset,
+      TimestampIncrementingOffsetBase<Timestamp,Long> previousOffset,
       JdbcSourceConnectorConfig.TimestampGranularity timestampGranularity
   ) {
     Timestamp extractedTimestamp = null;

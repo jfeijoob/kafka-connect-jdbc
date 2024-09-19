@@ -60,14 +60,14 @@ import io.confluent.connect.jdbc.util.ExpressionBuilder;
  *   so failures may cause duplicates.
  * </p>
  */
-public class TimestampIncrementingTableQuerier extends TableQuerier implements CriteriaValues<Long> {
+public class TimestampIncrementingTableQuerier extends TableQuerier implements CriteriaValues<Timestamp,Long> {
   private static final Logger log = LoggerFactory.getLogger(
       TimestampIncrementingTableQuerier.class
   );
 
   protected final List<String> timestampColumnNames;
-  protected TimestampIncrementingOffsetBase<Long> committedOffset;
-  protected TimestampIncrementingOffsetBase<Long> offset;
+  protected TimestampIncrementingOffsetBase<Timestamp,Long> committedOffset;
+  protected TimestampIncrementingOffsetBase<Timestamp,Long> offset;
   protected TimestampIncrementingCriteria criteria;
   protected final Map<String, String> partition;
   protected final String topic;
