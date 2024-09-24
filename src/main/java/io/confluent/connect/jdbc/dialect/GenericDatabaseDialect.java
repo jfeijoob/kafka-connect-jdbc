@@ -56,6 +56,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -81,6 +82,7 @@ import io.confluent.connect.jdbc.source.JdbcSourceConnectorConfig.TimestampGranu
 import io.confluent.connect.jdbc.source.JdbcSourceConnectorConfig.TransactionIsolationMode;
 import io.confluent.connect.jdbc.source.JdbcSourceTaskConfig;
 import io.confluent.connect.jdbc.source.TimestampIncrementingCriteria;
+import io.confluent.connect.jdbc.source.TimestampIncrementingCriteriaMultiColumn;
 import io.confluent.connect.jdbc.util.ColumnDefinition;
 import io.confluent.connect.jdbc.util.ColumnDefinition.Mutability;
 import io.confluent.connect.jdbc.util.ColumnDefinition.Nullability;
@@ -753,6 +755,15 @@ public class GenericDatabaseDialect implements DatabaseDialect {
         schemaPattern,
         tablePattern
     );
+    
+    Map<ColumnId,Short> pkColumnsSequences = new HashMap<>();
+    
+    short sequence = 0;
+    for (ColumnId columnId : pkColumns) {
+      pkColumnsSequences.put(columnId, sequence);
+      sequence++;
+    }
+    
     Map<ColumnId, ColumnDefinition> results = new HashMap<>();
     try (ResultSet rs = connection.getMetaData().getColumns(
         catalogPattern,
@@ -802,10 +813,12 @@ public class GenericDatabaseDialect implements DatabaseDialect {
         Boolean searchable = null;
         Boolean currency = null;
         Integer displaySize = null;
+        Short primaryKeySequence = -1;
         boolean isPrimaryKey = pkColumns.contains(columnId);
         if (isPrimaryKey) {
           // Some DBMSes report pks as null
           nullability = Nullability.NOT_NULL;
+          primaryKeySequence = pkColumnsSequences.get(columnId);
         }
         ColumnDefinition defn = columnDefinition(
             rs,
@@ -823,7 +836,8 @@ public class GenericDatabaseDialect implements DatabaseDialect {
             caseSensitive,
             searchable,
             currency,
-            isPrimaryKey
+            isPrimaryKey,
+            primaryKeySequence
         );
         results.put(columnId, defn);
       }
@@ -909,7 +923,7 @@ public class GenericDatabaseDialect implements DatabaseDialect {
   ) throws SQLException {
 
     // Get the primary keys of the table(s) ...
-    final Set<ColumnId> pkColumns = new HashSet<>();
+    final Set<ColumnId> pkColumns = new LinkedHashSet<>();
     try (ResultSet rs = connection.getMetaData().getPrimaryKeys(
         catalogPattern, schemaPattern, tablePattern)) {
       while (rs.next()) {
@@ -1045,7 +1059,8 @@ public class GenericDatabaseDialect implements DatabaseDialect {
       Boolean caseSensitive,
       Boolean searchable,
       Boolean currency,
-      Boolean isPrimaryKey
+      Boolean isPrimaryKey,
+      Short primaryKeySequence
   ) {
     return new ColumnDefinition(
         id,
@@ -1062,7 +1077,8 @@ public class GenericDatabaseDialect implements DatabaseDialect {
         caseSensitive != null ? caseSensitive.booleanValue() : false,
         searchable != null ? searchable.booleanValue() : false,
         currency != null ? currency.booleanValue() : false,
-        isPrimaryKey != null ? isPrimaryKey.booleanValue() : false
+        isPrimaryKey != null ? isPrimaryKey.booleanValue() : false,
+        primaryKeySequence.shortValue()
     );
   }
 
@@ -1072,6 +1088,14 @@ public class GenericDatabaseDialect implements DatabaseDialect {
       List<ColumnId> timestampColumns
   ) {
     return new TimestampIncrementingCriteria(incrementingColumn, timestampColumns, timeZone);
+  }
+  
+  @Override
+  public TimestampIncrementingCriteriaMultiColumn criteriaFor(
+      List<ColumnId> incrementingColumns,
+      List<ColumnId> timestampColumns
+  ) {
+    return new TimestampIncrementingCriteriaMultiColumn(incrementingColumns, timestampColumns, timeZone, this);
   }
 
   /**

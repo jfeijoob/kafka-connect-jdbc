@@ -186,8 +186,8 @@ public class JdbcSourceTask extends SourceTask {
       log.trace("The partition offsets are {}", offsets);
     }
 
-    String incrementingColumn
-        = config.getString(JdbcSourceTaskConfig.INCREMENTING_COLUMN_NAME_CONFIG);
+    List<String> incrementingColumns
+        = config.getList(JdbcSourceTaskConfig.INCREMENTING_COLUMN_NAME_CONFIG);
     List<String> timestampColumns
         = config.getList(JdbcSourceTaskConfig.TIMESTAMP_COLUMN_NAME_CONFIG);
     Long timestampDelayInterval
@@ -198,19 +198,23 @@ public class JdbcSourceTask extends SourceTask {
     String suffix = config.getString(JdbcSourceTaskConfig.QUERY_SUFFIX_CONFIG).trim();
 
     if (queryMode.equals(TableQuerier.QueryMode.TABLE)) {
-      validateColumnsExist(mode, incrementingColumn, timestampColumns, tables.get(0));
+      //TODO: JOSU Check multiple columns exist
+      String incrementingColumnName = incrementingColumns == null || incrementingColumns.size() == 0?"":incrementingColumns.get(0);
+      validateColumnsExist(mode, incrementingColumnName, timestampColumns, tables.get(0));
     }
 
     for (String tableOrQuery : tablesOrQuery) {
       final List<Map<String, String>> tablePartitionsToCheck;
       final Map<String, String> partition;
+      String incrementingColumnName = incrementingColumns == null || incrementingColumns.size() == 0?"":incrementingColumns.get(0);
       switch (queryMode) {
         case TABLE:
           if (validateNonNulls) {
+          //TODO: JOSU Check multiple columns NULL
             validateNonNullable(
                 mode,
                 tableOrQuery,
-                incrementingColumn,
+                incrementingColumnName,
                 timestampColumns
             );
           }
@@ -264,7 +268,7 @@ public class JdbcSourceTask extends SourceTask {
                 tableOrQuery,
                 topicPrefix,
                 null,
-                incrementingColumn,
+                incrementingColumns.get(0),
                 offset,
                 timestampDelayInterval,
                 timeZone,
@@ -288,21 +292,38 @@ public class JdbcSourceTask extends SourceTask {
             )
         );
       } else if (mode.endsWith(JdbcSourceTaskConfig.MODE_TIMESTAMP_INCREMENTING)) {
-        tableQueue.add(
-            new TimestampIncrementingTableQuerier(
-                dialect,
-                queryMode,
-                tableOrQuery,
-                topicPrefix,
-                timestampColumns,
-                incrementingColumn,
-                offset,
-                timestampDelayInterval,
-                timeZone,
-                suffix,
-                timestampGranularity
-            )
-        );
+        TableQuerier tq = null;
+            
+        if( incrementingColumns.size() == 1 ) {
+          tq = new TimestampIncrementingTableQuerier(
+              dialect,
+              queryMode,
+              tableOrQuery,
+              topicPrefix,
+              timestampColumns,
+              incrementingColumns.get(0),
+              offset,
+              timestampDelayInterval,
+              timeZone,
+              suffix,
+              timestampGranularity
+          );
+        }else {
+          tq = new TimestampIncrementingTableQuerierMultiColumn(
+              dialect, 
+              queryMode, 
+              tableOrQuery, 
+              topicPrefix, 
+              timestampColumns, 
+              incrementingColumns, 
+              offset, 
+              timestampDelayInterval, 
+              timeZone, 
+              suffix, 
+              timestampGranularity);
+        }
+ 
+        tableQueue.add( tq );
       }
     }
 
@@ -383,7 +404,6 @@ public class JdbcSourceTask extends SourceTask {
       return partitionOffset;
     } else {
       Map<String, Object> initialPartitionOffset = null;
-      // TODO: JOSU Compute InitialOffset Using Multi fields. Also configuration for multifields.
       // no offsets found
       Long timestampInitial = config.getLong(JdbcSourceConnectorConfig.TIMESTAMP_INITIAL_CONFIG);
       if (timestampInitial != null) {

@@ -46,10 +46,12 @@ public class ColumnDefinition {
   private final boolean currency;
   private final boolean signedNumbers;
   private final boolean isPrimaryKey;
+  private final short primaryKeySequence;
   private final Nullability nullability;
   private final Mutability mutability;
   private final String classNameForType;
 
+  
   public ColumnDefinition(
       ColumnId id,
       int jdbcType,
@@ -67,6 +69,44 @@ public class ColumnDefinition {
       boolean currency,
       boolean isPrimaryKey
   ) {
+    
+    this(
+        id, 
+        jdbcType, 
+        typeName, 
+        classNameForType, 
+        nullability, 
+        mutability, 
+        precision, 
+        scale, 
+        signedNumbers, 
+        displaySize, 
+        autoIncremented, 
+        caseSensitive, 
+        searchable, 
+        currency, 
+        isPrimaryKey, (short)-1);
+  }
+
+  
+  public ColumnDefinition(
+      ColumnId id,
+      int jdbcType,
+      String typeName,
+      String classNameForType,
+      Nullability nullability,
+      Mutability mutability,
+      int precision,
+      int scale,
+      boolean signedNumbers,
+      int displaySize,
+      boolean autoIncremented,
+      boolean caseSensitive,
+      boolean searchable,
+      boolean currency,
+      boolean isPrimaryKey,
+      short primaryKeySequence
+  ) {
     this.id = id;
     this.typeName = typeName;
     this.jdbcType = jdbcType;
@@ -82,6 +122,7 @@ public class ColumnDefinition {
     this.mutability = mutability != null ? mutability : Mutability.MAYBE_WRITABLE;
     this.classNameForType = classNameForType;
     this.isPrimaryKey = isPrimaryKey;
+    this.primaryKeySequence = primaryKeySequence;
   }
 
 
@@ -128,6 +169,15 @@ public class ColumnDefinition {
    */
   public boolean isPrimaryKey() {
     return isPrimaryKey;
+  }
+
+  /**
+   * In case column is part of primary key indicates its sequence within the primary key 
+   *
+   * @return primary sequence for the column
+   */
+  public short primaryKeySequence() {
+    return primaryKeySequence;
   }
 
   /**
@@ -307,7 +357,8 @@ public class ColumnDefinition {
     ColumnId newId = new ColumnId(tableId, this.id().name());
     return new ColumnDefinition(newId, jdbcType, typeName, classNameForType, nullability,
                                 mutability, precision, scale, signedNumbers, displaySize,
-                                autoIncremented, caseSensitive, searchable, currency, isPrimaryKey
+                                autoIncremented, caseSensitive, searchable, currency, isPrimaryKey, 
+                                primaryKeySequence
     );
   }
 
@@ -327,7 +378,7 @@ public class ColumnDefinition {
     }
     return new ColumnDefinition(id, jdbcType, typeName, classNameForType, nullability, mutability,
                                 precision, scale, signedNumbers, displaySize, autoIncremented,
-                                caseSensitive, searchable, currency, isPrimaryKey
+                                caseSensitive, searchable, currency, isPrimaryKey, isPrimaryKey?primaryKeySequence:0
     );
   }
 }

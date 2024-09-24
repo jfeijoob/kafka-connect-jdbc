@@ -575,7 +575,7 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         )
     ).define(
         INCREMENTING_COLUMN_NAME_CONFIG,
-        Type.STRING,
+        Type.LIST,
         INCREMENTING_COLUMN_NAME_DEFAULT,
         Importance.MEDIUM,
         INCREMENTING_COLUMN_NAME_DOC,

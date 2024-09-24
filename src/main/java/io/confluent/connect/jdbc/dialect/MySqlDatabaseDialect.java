@@ -169,4 +169,12 @@ public class MySqlDatabaseDialect extends GenericDatabaseDialect {
                 .replaceAll("(?i)([(,]password=)[^,)]*", "$1****")
                 .replaceAll("(://[^:]*:)([^@]*)@", "$1****@");
   }
+  
+  
+  @Override
+  protected boolean useCatalog() {
+    // Mysql uses JDBC's catalog to represent the database
+    return true;
+  }
+
 }

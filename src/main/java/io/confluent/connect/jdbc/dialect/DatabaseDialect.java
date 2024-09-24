@@ -34,6 +34,7 @@ import io.confluent.connect.jdbc.sink.metadata.SinkRecordField;
 import io.confluent.connect.jdbc.source.ColumnMapping;
 import io.confluent.connect.jdbc.source.JdbcSourceConnectorConfig.TransactionIsolationMode;
 import io.confluent.connect.jdbc.source.TimestampIncrementingCriteria;
+import io.confluent.connect.jdbc.source.TimestampIncrementingCriteriaMultiColumn;
 import io.confluent.connect.jdbc.util.ColumnDefinition;
 import io.confluent.connect.jdbc.util.ColumnId;
 import io.confluent.connect.jdbc.util.ConnectionProvider;
@@ -303,6 +304,21 @@ public interface DatabaseDialect extends ConnectionProvider {
       List<ColumnId> timestampColumns
   );
 
+  /**
+   * Create a criteria generator for queries that look for changed data using timestamp and
+   * incremented columns.
+   *
+   * @param incrementingColumns the identifiers of the incremented columns; may be null if there is
+   *                           none
+   * @param timestampColumns   the identifiers of the timestamp column; may be null if there is
+   *                           none
+   * @return the {@link TimestampIncrementingCriteria} implementation; never null
+   */
+  TimestampIncrementingCriteriaMultiColumn criteriaFor(
+      List<ColumnId> incrementingColumns,
+      List<ColumnId> timestampColumns
+  );
+  
   /**
    * Use the supplied {@link SchemaBuilder} to add a field that corresponds to the column with the
    * specified definition.
