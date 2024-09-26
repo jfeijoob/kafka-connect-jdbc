@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import io.confluent.connect.jdbc.dialect.DatabaseDialect.ParameterSetter;
 import io.confluent.connect.jdbc.sink.JdbcSinkConfig;
 import io.confluent.connect.jdbc.sink.metadata.FieldsMetadata;
 import io.confluent.connect.jdbc.sink.metadata.SchemaPair;
@@ -666,6 +667,8 @@ public interface DatabaseDialect extends ConnectionProvider {
    * @return the column converter function; or null if the column should be ignored
    */
   ColumnConverter createColumnConverter(ColumnMapping mapping);
+  
+  public <T> ParameterSetter<T> getParameterSetter( Class<T> forClass );
 
   /**
    * A function that obtains a column value from the current row of the specified result set.

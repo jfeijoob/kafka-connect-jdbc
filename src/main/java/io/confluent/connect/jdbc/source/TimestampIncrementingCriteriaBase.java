@@ -106,15 +106,26 @@ public abstract class TimestampIncrementingCriteriaBase<T,O> {
    * @param builder the string builder to which the WHERE clause should be appended; never null
    */
   public void whereClause(ExpressionBuilder builder) {
+    this.whereClause(builder, true);
+  }
+
+  /**
+   * Build the WHERE clause for the columns used in this criteria. There are incremental columns but no incremental data,
+   * then corresponding condition for incremental columns in where clause is not generated.
+   *
+   * @param builder the string builder to which the WHERE clause should be appended; never null
+   */
+  public void whereClause(ExpressionBuilder builder, boolean withIncrementalData ) {
     if (hasTimestampColumns() && hasIncrementedColumn()) {
-      timestampIncrementingWhereClause(builder);
+      timestampIncrementingWhereClause(builder, withIncrementalData);
     } else if (hasTimestampColumns()) {
       timestampWhereClause(builder);
     } else if (hasIncrementedColumn()) {
-      incrementingWhereClause(builder);
+      incrementingWhereClause(builder, withIncrementalData);
     }
   }
-
+  
+  
   /**
    * Set the query parameters on the prepared statement whose WHERE clause was generated with the
    * previous call to {@link #whereClause(ExpressionBuilder)}.
@@ -212,9 +223,16 @@ public abstract class TimestampIncrementingCriteriaBase<T,O> {
     return builder.toString();
   }
 
-  protected abstract void timestampIncrementingWhereClause(ExpressionBuilder builder);
+  protected void timestampIncrementingWhereClause(ExpressionBuilder builder) {
+    this.timestampIncrementingWhereClause(builder, true);
+  }
+  
+  protected abstract void timestampIncrementingWhereClause(ExpressionBuilder builder, boolean withIncrementalData);
 
-  protected abstract void incrementingWhereClause(ExpressionBuilder builder);
+  protected void incrementingWhereClause(ExpressionBuilder builder) {
+    this.incrementingWhereClause(builder, true);
+  }
+  protected abstract void incrementingWhereClause(ExpressionBuilder builder, boolean withIncrementalData);
 
   protected abstract void timestampWhereClause(ExpressionBuilder builder);
 

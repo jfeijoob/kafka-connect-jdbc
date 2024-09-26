@@ -29,6 +29,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.TimeZone;
 import java.util.List;
@@ -149,7 +150,8 @@ public class TimestampIncrementingTableQuerierMultiColumn extends TableQuerier i
 
     // Append the criteria using the columns ...
     criteria = dialect.criteriaFor(incrementingColumns, timestampColumns);
-    criteria.whereClause(builder);
+        
+    criteria.whereClause(builder, !offset.getIncrementingOffset().asMap().isEmpty() );
 
     addSuffixIfPresent(builder);
     
@@ -183,25 +185,21 @@ public class TimestampIncrementingTableQuerierMultiColumn extends TableQuerier i
   private void findDefaultAutoIncrementingColumn(Connection db) throws SQLException {
     // Default when unspecified uses an autoincrementing column
     if (incrementingColumnNames != null && incrementingColumnNames.isEmpty()) {
-      //TODO: JOSU CHANGE for getting primary key. In column definition there is a flag indicating if it is primary key, 
-      //           add KEY_SEQ for ordering as per table definition.
-      // Find the first auto-incremented column ...
-     
-      
+      // Find primary key for using it as monotonically incremental value.
+          
       TableDefinition tableDefinition = dialect.describeTable(db, tableId);
       
+      List<String> pkColumns = new ArrayList<String>( tableDefinition.primaryKeyColumnNames() );
       
-      for (ColumnDefinition defn : dialect.describeColumns(
-          db,
-          tableId.catalogName(),
-          tableId.schemaName(),
-          tableId.tableName(),
-          null).values()) {
-        if (defn.isAutoIncrement()) {
-          incrementingColumnNames.add( defn.id().name() );
-          break;
+      String[] pkColumnsArray = new String[pkColumns.size()];
+      
+      for (ColumnDefinition colDef : tableDefinition.definitionsForColumns()) {
+        if ( colDef.isPrimaryKey() ) {
+          pkColumnsArray[colDef.primaryKeySequence()] = colDef.id().name();
         }
       }
+      
+      incrementingColumnNames = Arrays.asList(pkColumnsArray);      
     }
     // If still not found, query the table and use the result set metadata.
     // This doesn't work if the table is empty.
@@ -267,7 +265,16 @@ public class TimestampIncrementingTableQuerierMultiColumn extends TableQuerier i
 
   @Override
   public IncrementingOffset lastIncrementedValue() {
-    return offset.getIncrementingOffset();
+    IncrementingOffset resultOffset = new IncrementingOffset();
+    IncrementingOffset currentOffset = offset.getIncrementingOffset();
+    for (String columnName : incrementingColumnNames) {
+      Comparable<?> value = currentOffset.getValue(columnName);
+      if( value == null )
+        continue;
+      resultOffset.put( columnName, value );
+      
+    }
+    return resultOffset;
   }
 
   @Override

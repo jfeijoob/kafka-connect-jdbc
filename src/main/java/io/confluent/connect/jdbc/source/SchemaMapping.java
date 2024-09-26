@@ -25,6 +25,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,6 +62,14 @@ public final class SchemaMapping {
       DatabaseDialect dialect
   ) throws SQLException {
     Map<ColumnId, ColumnDefinition> colDefns = dialect.describeColumns(metadata);
+    return SchemaMapping.create(schemaName, colDefns, dialect);
+  }
+  
+  public static SchemaMapping create(
+      String schemaName,
+      Map<ColumnId, ColumnDefinition> colDefns,
+      DatabaseDialect dialect
+  ) throws SQLException {
     Map<String, ColumnConverter> colConvertersByFieldName = new LinkedHashMap<>();
     SchemaBuilder builder = SchemaBuilder.struct().name(schemaName);
     int columnNumber = 0;
@@ -77,7 +86,7 @@ public final class SchemaMapping {
     }
     Schema schema = builder.build();
     return new SchemaMapping(schema, colConvertersByFieldName);
-  }
+  }  
 
   private final Schema schema;
   private final List<FieldSetter> fieldSetters;

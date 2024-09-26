@@ -54,7 +54,8 @@ public class TimestampIncrementingCriteriaMultiColumn extends TimestampIncrement
       int parameterIndex) throws SQLException {
 
     for (Entry<String, Object> e : incOffset) {
-      dialect.bindField(stmt, parameterIndex++, e.getValue());
+      DatabaseDialect.ParameterSetter<Object> ps = dialect.getParameterSetter((Class<Object>)e.getValue().getClass());  
+      ps.setParameter(stmt, parameterIndex++, e.getValue());
     }
 
     return parameterIndex;
@@ -64,14 +65,18 @@ public class TimestampIncrementingCriteriaMultiColumn extends TimestampIncrement
   protected void setQueryParametersTimestampIncrementing(PreparedStatement stmt,
       CriteriaValues<Timestamp,IncrementingOffset> values) throws SQLException {
     
+    
+    IncrementingOffset incOffset = values.lastIncrementedValue();
+    if( incOffset.asMap().isEmpty() ) {
+      this.setQueryParametersTimestamp(stmt, values);
+      return;
+    }
     Timestamp beginTime = values.beginTimestampValue();
     Timestamp endTime = values.endTimestampValue();
     
     int nextParameterIndex = 1;
     
     stmt.setTimestamp(nextParameterIndex++, endTime, DateTimeUtils.getTimeZoneCalendar(timeZone));
-    
-    IncrementingOffset incOffset = values.lastIncrementedValue();
     
     List<Entry<String, Object>> offsetParameters = new ArrayList<>(incOffset.asMap().entrySet());
 
@@ -93,6 +98,9 @@ public class TimestampIncrementingCriteriaMultiColumn extends TimestampIncrement
   protected void setQueryParametersIncrementing(PreparedStatement stmt, CriteriaValues<Timestamp,IncrementingOffset> values)
       throws SQLException {
     IncrementingOffset incOffset = values.lastIncrementedValue();
+    if(incOffset.asMap().isEmpty()) {
+      return;
+    }
     int nextParameterIndex = 1;
     
     List<Entry<String, Object>> offsetParameters = new ArrayList<>(incOffset.asMap().entrySet());
@@ -158,7 +166,6 @@ public class TimestampIncrementingCriteriaMultiColumn extends TimestampIncrement
    * @param record the record's struct; never null
    * @return the incrementing ID for this row; may not be null
    */
-  @SuppressWarnings("unchecked")
   @Override
   protected IncrementingOffset extractOffsetIncrementedId(Schema schema, Struct record) {
     final IncrementingOffset extractedId = new IncrementingOffset();
@@ -178,7 +185,7 @@ public class TimestampIncrementingCriteriaMultiColumn extends TimestampIncrement
         incrementingColumnValue = extractDecimalId(incrementingColumnValue);
       }
 
-      extractedId.put(incrementingColumn.name(), (Comparable<Object>) incrementingColumnValue);
+      extractedId.put(incrementingColumn.name(), (Comparable<?>) incrementingColumnValue);
 
       log.trace("Extracted column name: {} value: {}", incrementingColumn.name(), incrementingColumnValue);
     }
@@ -204,7 +211,7 @@ public class TimestampIncrementingCriteriaMultiColumn extends TimestampIncrement
   }
 
   @Override
-  protected void timestampIncrementingWhereClause(ExpressionBuilder builder) {
+  protected void timestampIncrementingWhereClause(ExpressionBuilder builder, boolean withIncrementalData) {
     // This version combines two possible conditions. The first checks timestamp == last
     // timestamp and incrementing > last incrementing. The timestamp alone would include
     // duplicates, but adding the incrementing condition ensures no duplicates, e.g. you would
@@ -219,14 +226,21 @@ public class TimestampIncrementingCriteriaMultiColumn extends TimestampIncrement
     //  timestamp 1236, id 23
     // We should capture both id = 22 (an update) and id = 23 (a new row)
     builder.append(" WHERE ");
-    coalesceTimestampColumns(builder);
-    builder.append(" < ? AND ((");
-    coalesceTimestampColumns(builder);
-    builder.append(" = ? AND (");
-    criteriaForIncrementingFields(builder);
-    builder.append(")) OR ");
-    coalesceTimestampColumns(builder);
-    builder.append(" > ?)");
+    if( withIncrementalData ) {
+      coalesceTimestampColumns(builder);
+      builder.append(" < ? AND ((");
+      coalesceTimestampColumns(builder);
+      builder.append(" = ? AND (");
+      criteriaForIncrementingFields(builder);
+      builder.append(")) OR ");
+      coalesceTimestampColumns(builder);
+      builder.append(" > ?)");      
+    }else {
+      coalesceTimestampColumns(builder);
+      builder.append(" > ? AND ");
+      coalesceTimestampColumns(builder);
+      builder.append(" < ?");
+    }
     builder.append(" ORDER BY ");
     coalesceTimestampColumns(builder);
     builder.append(",");
@@ -236,9 +250,11 @@ public class TimestampIncrementingCriteriaMultiColumn extends TimestampIncrement
   }
 
   @Override
-  protected void incrementingWhereClause(ExpressionBuilder builder) {
-    builder.append(" WHERE ");
-    criteriaForIncrementingFields(builder);
+  protected void incrementingWhereClause(ExpressionBuilder builder, boolean withIncrementalData) {
+    if( withIncrementalData ) {
+      builder.append(" WHERE ");
+      criteriaForIncrementingFields(builder);
+    }
     builder.append(" ORDER BY ");
     orderByForIncrementalFields(builder);
     builder.append(" ASC");

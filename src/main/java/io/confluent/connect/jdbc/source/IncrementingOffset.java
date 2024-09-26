@@ -13,7 +13,7 @@ public class IncrementingOffset implements Comparable<IncrementingOffset> {
 		offset = new LinkedHashMap<String, Comparable<?>>();
 	}
 
-	public void put( String key, Comparable<Object> value ) {
+	public void put( String key, Comparable<?> value ) {
 		offset.put(key, value);
 	}
 	

@@ -33,6 +33,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Collections;
@@ -126,7 +127,7 @@ public class TimestampIncrementingTableQuerierTest {
     expectLastCall();
     expect(stmt.executeQuery()).andReturn(resultSet);
     expect(resultSet.getMetaData()).andReturn(null);
-    expect(SchemaMapping.create(anyObject(), anyObject(), anyObject())).andReturn(schemaMapping);
+    expect(SchemaMapping.create(anyObject(), (ResultSetMetaData)anyObject(), anyObject())).andReturn(schemaMapping);
   }
 
   @Test

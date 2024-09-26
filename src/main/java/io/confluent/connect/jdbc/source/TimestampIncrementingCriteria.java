@@ -188,7 +188,7 @@ public class TimestampIncrementingCriteria extends TimestampIncrementingCriteria
   }
 
   @Override
-  protected void timestampIncrementingWhereClause(ExpressionBuilder builder) {
+  protected void timestampIncrementingWhereClause(ExpressionBuilder builder, boolean withIncrementalDat ) {
     // This version combines two possible conditions. The first checks timestamp == last
     // timestamp and incrementing > last incrementing. The timestamp alone would include
     // duplicates, but adding the incrementing condition ensures no duplicates, e.g. you would
@@ -222,7 +222,7 @@ public class TimestampIncrementingCriteria extends TimestampIncrementingCriteria
   }
 
   @Override
-  protected void incrementingWhereClause(ExpressionBuilder builder) {
+  protected void incrementingWhereClause(ExpressionBuilder builder, boolean withIncrementalData) {
 	ColumnId incrementingColumn = getColumnId();
     builder.append(" WHERE ");
     builder.append(incrementingColumn);

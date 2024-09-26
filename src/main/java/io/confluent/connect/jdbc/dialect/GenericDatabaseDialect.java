@@ -1365,8 +1365,10 @@ public class GenericDatabaseDialect implements DatabaseDialect {
     );
   }
 
-  protected ParameterSetter<?> getParameterSetter( Class<?> forClass ){
-	  return paremeterSetters.get(forClass);
+  @SuppressWarnings("unchecked")
+  @Override
+  public <T> ParameterSetter<T> getParameterSetter( Class<T> forClass ){
+	  return (ParameterSetter<T>)paremeterSetters.get(forClass);
   }
   
   @SuppressWarnings({"deprecation", "fallthrough"})
